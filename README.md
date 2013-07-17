@@ -1,4 +1,4 @@
 lookoutproxy
 ============
 
-IT monitoring proxy
+IT management proxy
