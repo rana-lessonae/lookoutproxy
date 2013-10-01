@@ -26,53 +26,87 @@ Planned or implemented features include :
 
 package main
 
+import "time"
 import "runtime"
 import "fmt"
-//import "reflect"
 
 
 func main() {
-
 	// Should load configuration files here
 
-	var value string
-	var present bool
-
-	value, present = globalConfiguration[GLOBAL_CONFIGURATION_MAX_THREADS]
+	// Thread number configuration
+	present, valid, threads := int64Config(globalConfiguration, GLOBAL_MAX_THREADS, 1 - MAX_THREADS, MAX_THREADS)
 	if present {
-		var threads int
-		var valid bool
-
-		threads, valid = intValue(value)
-
 		if valid {
-			if threads == 0 {
-				threads = MAX_THREADS
-			} else if threads < 0 {
+			if threads <= 0 {
 				threads = MAX_THREADS + threads
 			}
 
-			if threads < 0 {
-				threads = 1
-			} else if threads > MAX_THREADS {
-				threads = MAX_THREADS
-			}
-
-			runtime.GOMAXPROCS(threads)
-			fmt.Printf("%d usable threads.\n", threads)
+			runtime.GOMAXPROCS(int(threads))
+			fmt.Printf("%d usable thread(s).\n", threads)
 		} else {
-			fmt.Printf("Non integer value for %s global parameter: \"%s\" !\n", GLOBAL_CONFIGURATION_MAX_THREADS, value)
+			fmt.Printf("Invalid value for %s global parameter !\n", GLOBAL_MAX_THREADS)
 		}
 	}
 
-	for object, configuration := range objectsConfiguration {
-		value, present = configuration[CONFIGURATION_LOAD_ON_STARTUP]
-		if present {
-			if isTrue(value) {
-				fmt.Printf("%s should be started now.\n", object)
-			} else if isNotFalse(value) {
-				fmt.Printf("Should %s be started or not ?\n", object)
+	// Check all objects in configuration
+	objectControl := make(chan ControlMessage, CONTROL_QUEUE_SIZE)
+	var invalidConfig	bool = false
+
+	for objectName, configuration := range modulesConfiguration {
+		present, valid, moduleDef := configuration.moduleDef(MODULE_NAME)
+		if present && valid {
+			object := moduleDef.create(objectName, configuration, objectControl)
+			valid = moduleDef.check(object)
+			if ! valid {
+				fmt.Printf("Object \"%s\" configuration is invalid !\n", objectName)
+				invalidConfig = true
 			}
+		} else {
+			fmt.Printf("Object \"%s\" is not referencing a valid module !\n", objectName)
+			invalidConfig = true
+		}
+	}
+
+	// Stop on configuration error
+	if invalidConfig {
+		return
+	}
+
+	// Run objects where load on startup is active
+	for objectName, configuration := range modulesConfiguration {
+		present, valid, start := boolConfig(configuration, MODULE_LOAD_ON_STARTUP)
+		if present {
+			if valid {
+				if start {
+					_ = RunModule(objectName, MODULE_LOAD_ON_STARTUP, objectControl)
+				}
+			} else {
+				fmt.Printf("Should \"%s\" be started or not ?\n", objectName)
+			}
+		}
+	}
+
+	time.Sleep(5 * time.Second)
+
+	// Send stop message to child threads
+	for _, object := range runningObjects {
+		if object.startReason == MODULE_LOAD_ON_STARTUP {
+			object.SendOrder(OBJECT_STOP)
+		}
+	}
+
+	var control	ControlMessage
+
+	// Wait for the child threads
+	for ; len(runningObjects) > 0 ; {
+		select {
+			case control = <-objectControl:
+				if control.text == OBJECT_STOP {
+					control.from.CleanUp ()
+				}
+			default:
+				time.Sleep(1 * time.Second)
 		}
 	}
 }

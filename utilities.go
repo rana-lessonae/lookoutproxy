@@ -24,23 +24,24 @@ package main
 
 import "strings"
 import "strconv"
+import "time"
 
 
 func isTrue(value string) bool {
-	switch strings.ToUpper(value) {
+	switch strings.ToLower(value) {
 		case "1":	return true
-		case "YES":	return true
-		case "TRUE":	return true
+		case "yes":	return true
+		case "true":	return true
 		default:	return false
 	}
 }
 
 
 func isFalse(value string) bool {
-	switch strings.ToUpper(value) {
+	switch strings.ToLower(value) {
 		case "0":	return true
-		case "NO":	return true
-		case "FALSE":	return true
+		case "no":	return true
+		case "false":	return true
 		default:	return false
 	}
 }
@@ -56,16 +57,85 @@ func isNotFalse(value string) bool {
 }
 
 
-func intValue(value string) (result int, valid bool) {
-	var number int64
-	var err error
+func boolConfig(configuration ObjectConfiguration, index string) (present, valid, value bool) {
+	var text string
 
-	number, err = strconv.ParseInt(value, 0, 0)
+	text, present = configuration[index]
 
-	if err == nil {
-		return int(number), true
-	} else {
-		return 0, false
+	if present {
+		if isTrue (text) {
+			valid = true
+			value = true
+		} else if isFalse (text) {
+			valid = true
+			value = false
+		}
 	}
+
+	return
+}
+
+
+func int64Config(configuration ObjectConfiguration, index string, min, max int64) (present, valid bool, value int64) {
+	var text string
+	var problem error
+
+	value = max
+	text, present = configuration[index]
+
+	if present {
+		value, problem = strconv.ParseInt(text, 0, 64)
+
+		if (problem == nil) && (min <= value) && (value <= max) {
+			valid = true
+		}
+	}
+
+	return
+}
+
+
+func durationConfig(configuration ObjectConfiguration, index string, min, max time.Duration) (present, valid bool, value time.Duration) {
+	var text string
+	var problem error
+
+	value = max
+	text, present = configuration[index]
+
+	if present {
+		value, problem = time.ParseDuration(text)
+
+		if (problem == nil) && (min <= value) && (value <= max) {
+			valid = true
+		}
+	}
+
+	return
+}
+
+
+/*func funcConfig(configuration ObjectConfiguration, index string) (present, valid bool, function ObjectCreation) {
+	var text string
+
+	text, present = configuration[index]
+
+	if present {
+		function, valid = objectCreation[text]
+	}
+
+	return
+}*/
+
+
+func moduleConfig(configuration ObjectConfiguration, index string) (present, valid bool, module ObjectConfiguration) {
+	var text string
+
+	text, present = configuration[index]
+
+	if present {
+		module, valid = modulesConfiguration[text]
+	}
+
+	return
 }
 

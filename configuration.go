@@ -22,29 +22,67 @@ lookoutproxy configuration management
 
 package main
 
-//import "strings"
+//import "time"
 
 
 // Configuration types
-type GlobalConfiguration map[string]string
 type ObjectConfiguration map[string]string
-type ObjectsConfiguration map[string]ObjectConfiguration
+type ModulesConfiguration map[string]ObjectConfiguration
 
 // Configuration field IDs
-const GLOBAL_CONFIGURATION_MAX_THREADS = "max_threads"
-const CONFIGURATION_LOAD_ON_STARTUP = "load_on_startup"
+const GLOBAL_MAX_THREADS =	"max_threads"
+const MODULE_NAME =	"module_name"
+const MODULE_LOAD_ON_STARTUP =	"load_on_startup"
+const MODULE_LOAD_ON_DEMAND =	"load_on_demand"
+const MODULE_OUTPUTS =	"outputs"
+const MODULE_INPUTS =	"inputs"
+const IP_VERSION =	"ip_version"
+const LISTENING_ADDRESS =	"listening_address"
+const LISTENING_PORT =	"listening_port"
+const PACKET_TIMEOUT =	"packet_timeout"
+const DESTINATION_ADDRESS =	"destination_address"
+const DESTINATION_PORT =	"destination_port"
 
 // Global configuration
-var globalConfiguration = GlobalConfiguration {
-	GLOBAL_CONFIGURATION_MAX_THREADS:	"0",
+var globalConfiguration = ObjectConfiguration {
+	GLOBAL_MAX_THREADS:	"-1",
 }
 
-// Object configuration
-var objectsConfiguration = ObjectsConfiguration {
-	"Trap receiver":	{
-		CONFIGURATION_LOAD_ON_STARTUP:	"yes",
+// Modules configuration
+var modulesConfiguration = ModulesConfiguration {
+	"UDP server v4":	{
+		MODULE_NAME:	"in_udp",
+		MODULE_LOAD_ON_STARTUP:	"yes",
+		MODULE_OUTPUTS:	"output:UDP client v4:input,output:UDP client v6:input",
+		IP_VERSION:	"4",
+		LISTENING_ADDRESS:	"",
+		LISTENING_PORT:	"10162",
+		PACKET_TIMEOUT:	"100ms",
 	},
-	"Trap emitter":	{
+	"UDP server v6":	{
+		MODULE_NAME:	"in_udp",
+		MODULE_LOAD_ON_STARTUP:	"yes",
+		MODULE_OUTPUTS:	"output:UDP client v4:input,output:UDP client v6:input",
+		IP_VERSION:	"6",
+		LISTENING_ADDRESS:	"",
+		LISTENING_PORT:	"10162",
+		PACKET_TIMEOUT:	"100ms",
+	},
+	"UDP client v4":	{
+		MODULE_NAME:	"out_udp",
+		MODULE_LOAD_ON_STARTUP:	"no",
+		IP_VERSION:	"4",
+		DESTINATION_ADDRESS:	"192.168.0.1",
+		DESTINATION_PORT:	"162",
+		PACKET_TIMEOUT:	"1s",
+	},
+	"UDP client v6":	{
+		MODULE_NAME:	"out_udp",
+		MODULE_LOAD_ON_STARTUP:	"no",
+		IP_VERSION:	"6",
+		DESTINATION_ADDRESS:	"::1",
+		DESTINATION_PORT:	"162",
+		PACKET_TIMEOUT:	"1s",
 	},
 }
 
